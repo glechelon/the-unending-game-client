@@ -1,0 +1,26 @@
+{
+  "name": "the-unending-game-client",
+  "version": "1.0.0",
+  "description": "TODO",
+  "main": "app.js",
+  "dependencies": {
+    "@types/pixi.js": "^5.0.0",
+    "pixi.js": "^5.3.3"
+  },
+  "devDependencies": {
+    "webpack": "^4.44.1",
+    "webpack-cli": "^3.3.12",
+    "webpack-dev-server": "^3.11.0"
+  },
+  "scripts": {
+    "serve": "npm run watch && npm run start",
+    "start": "webpack-dev-server --inline --progress --colors",
+    "watch": "webpack --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://gitlab.com/the_unending/the-unending-game-client.git"
+  },
+  "author": "Guillaume Lechelon",
+  "license": "ISC"
+}
