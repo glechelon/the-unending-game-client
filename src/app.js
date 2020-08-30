@@ -6,8 +6,8 @@ import * as PIXI from 'pixi.js';
 //Load game configuration
 var gameScreen = { width: 800, height: 600 };
 var config = new Config(gameScreen);
+const HERO_SPEED = 7;
 
-var ke
 //Init the game app
 
 var app = new PIXI.Application({
@@ -22,6 +22,7 @@ var app = new PIXI.Application({
 
 //Load assets
 app.loader
+    .add("map", "assets/img/map/map.png")
     .add("arrowLeft", "assets/img/nav/arrowBeige_left.png")
     .add("arrowRight", "assets/img/nav/arrowBeige_right.png")
     .add("heroIdle", "assets/img/hero/idle_0.png")
@@ -97,7 +98,23 @@ function play() {
 
     app.stage.removeChildren();
     console.log("play");
+
+    //This is the camera 
+    var frame = new PIXI.Rectangle(200, 800, 800, 600);
+
+    //this is the world map
+    var worldTexture = new PIXI.Texture(app.loader.resources["map"].texture);
+
+    //this is the part of the map to be displayed
+    var displayedWorld = new PIXI.Texture(worldTexture, frame);
+
+    //This is where the world is displayed 
+    var world = new PIXI.Sprite(displayedWorld);
+
+    //This is the players graphical elements
     var heroSheet = app.loader.resources["hero"].spritesheet;
+
+    //This is where the player is dipslayed
     var hero = new PIXI.AnimatedSprite([heroSheet.textures["idle_0.png"]]);
     hero.animationSpeed = 0.2;
     hero.loop = true;
@@ -105,63 +122,123 @@ function play() {
     hero.x = gameScreen.width / 2;
     hero.y = gameScreen.height / 2;
     hero.name = "hero";
+
+    //This is where the game is displayed
     let gameContainer = new PIXI.Container();
+    gameContainer.addChild(world);
     gameContainer.addChild(hero);
     gameContainer.interactive = true;
     gameContainer.name = "gameContainer";
+
+    //We remove old displays and add the game display
     app.stage.removeChildren();
     app.stage.addChild(gameContainer);
+
     console.time();
-    window.addEventListener("keydown", (ev) => handleKeyboardInputs(ev, hero, heroSheet));
-    window.addEventListener("keyup", (ev) => handleKeyboardRelease(ev, hero, heroSheet));
-    app.ticker.add((delta, ero) => gameLoop(delta, hero));
+
+    //We handle game inputs
+    window.addEventListener("keydown", (ev) => handleKeyboardInputs(ev, hero, heroSheet, frame, worldTexture));
+    window.addEventListener("keyup", (ev) => handleKeyboardRelease(ev, hero, heroSheet, frame));
+
+    // Wre create the game loop
+    app.ticker.add((delta, map) => gameLoop(delta, displayedWorld));
     console.timeEnd;
 
 
 }
 
 
-function handleKeyboardInputs(ev, hero, heroSheet) {
+//needs the player and the camera
+function moveTop(frame, hero) {
+    console.log(frame, hero);
+    //camera move
+    if (frame.y > 3 && hero.y === gameScreen.height / 2) {
+        frame.y -= HERO_SPEED;
+    } else {
+        //player move
+        if (hero.y - hero.height / 2 > 0) {
+            hero.y += -HERO_SPEED;
+        }
+    }
+}
+
+
+function moveLeft(frame, hero, worldTexture) {
+
+    if (frame.x >= 3 && hero.x === gameScreen.width / 2) {
+        frame.x -= HERO_SPEED;
+        //player
+    } else {
+        if (hero.x - hero.width / 2 > 0) {
+            hero.x -= HERO_SPEED;
+        }
+    }
+}
+
+
+//Needs the player, the worldMap and the camera
+function moveBottom(frame, hero, worldTexture) {
+    console.log(worldTexture);
+    //camera move
+    // if camera bottom hasn't reached the end of the world and the playered is not centered
+    //TODO a method of the class game that checks if a sprite is centered in the game screen
+    //TODO: a method of the class game that checks if a point is still in the screen
+    //TODO: a method of the class camera that returns the bottom y coordinate of the sprite  
+    if (frame.y + frame.height < worldTexture.height && hero.y === gameScreen.height / 2) {
+        frame.y += HERO_SPEED;
+        //player
+    } else {
+        //While player is in the screen
+        //TODO: a method of the class game that checks if a point is still in the screen
+        //TODO a metod of the Player class that returns the bottom y coordinate of the sprite 
+        if (hero.y + hero.height / 2 < gameScreen.height) {
+            hero.y += HERO_SPEED;
+        }
+    }
+}
+
+function moveRight(frame, hero, worldTexture) {
+
+    if (frame.x + frame.width < worldTexture.width && hero.x === gameScreen.width / 2) {
+        frame.x += HERO_SPEED;
+        //player
+    } else {
+
+        if (hero.x + hero.width / 2 < gameScreen.width) {
+            hero.x += HERO_SPEED;
+        }
+    }
+}
+
+function run(hero, heroSheet) {
+    if (!hero.playing) {
+        hero.textures = heroSheet.animations["run"];
+        hero.play();
+    }
+}
+
+
+function handleKeyboardInputs(ev, hero, heroSheet, frame, worldTexture) {
     switch (ev.key) {
         case "z":
             console.log("Je vais en avant!");
-            if (!hero.playing) {
-                hero.textures = heroSheet.animations["run"];
-                hero.play();
-            }
-            if (hero.y - hero.height / 2 > 0) {
-                hero.y += -5;
-            }
+            run(hero, heroSheet);
+            moveTop(frame, hero);
             break;
         case "q":
             console.log("Je vais à gauche!");
-            if (!hero.playing) {
-                hero.textures = heroSheet.animations["run"];
-                hero.play();
-            }
-            if (hero.x - hero.width / 2 > 0) {
-                hero.x += -5;
-            }
+            run(hero, heroSheet);
+            moveLeft(frame, hero, worldTexture);
             break;
         case "s":
             console.log("Je vais en arrière!");
-            if (!hero.playing) {
-                hero.textures = heroSheet.animations["run"];
-                hero.play();
-            }
-            if (hero.y + hero.height / 2 < gameScreen.height) {
-                hero.y += 5;
-            }
+            run(hero, heroSheet);
+            moveBottom(frame, hero, worldTexture);
             break;
         case "d":
             console.log("Je vais à droite!");
-            if (!hero.playing) {
-                hero.textures = heroSheet.animations["run"];
-                hero.play();
-            }
-            if (hero.x + hero.width / 2 < gameScreen.width) {
-                hero.x += 5;
-            }
+            run(hero, heroSheet);
+            moveRight(frame, hero, worldTexture);
             break;
         default:
             break;
@@ -177,6 +254,7 @@ function handleKeyboardRelease(ev, hero, heroSheet) {
 }
 
 
-function gameLoop(delta, hero) {
-
+function gameLoop(delta, map) {
+    map.updateUvs();
+    //TODO: a method from the 
 }
