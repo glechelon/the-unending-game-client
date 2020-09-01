@@ -31,6 +31,7 @@ app.loader
     .add("arrowRight", "assets/img/nav/arrowBeige_right.png")
     .add("heroIdle", "assets/img/hero/idle_0.png")
     .add("hero", "assets/img/hero/hero.json")
+    .add("monster", "assets/img/pnj/pnjSpiteSheet.json")
     .load();
 
 //Init the game view
@@ -103,21 +104,17 @@ function play() {
     app.stage.removeChildren();
     console.log("play");
 
-    //This is the camera 
-    var frame = new PIXI.Rectangle(200, 800, 800, 600);
-    frame.futureX = frame.x;
-    frame.futureY = frame.y;
-
     //this is the world map
     var worldTexture = new PIXI.Texture(app.loader.resources["map"].texture);
+
     var worldBoxes = [];
     worldBoxes.push({ x: 330, y: 840, width: 150, height: 150 });
 
-    //this is the part of the map to be displayed
-    var displayedWorld = new PIXI.Texture(worldTexture, frame);
+    var box = new PIXI.Graphics();
+    box.drawRect(330, 840, 150, 150);
+    box.lineStyle(5, 0x000000);
 
-    //This is where the world is displayed 
-    var world = new PIXI.Sprite(displayedWorld);
+    var world = new PIXI.Sprite(worldTexture);
 
     //This is the players graphical elements
     var heroSheet = app.loader.resources["hero"].spritesheet;
@@ -133,35 +130,52 @@ function play() {
     hero.futureY = hero.y;
     hero.name = "hero";
 
+
+
+    var monsterSheet = app.loader.resources["monster"].spritesheet;
+
+    var monster = new PIXI.AnimatedSprite([monsterSheet.textures["tile000.png"]]);
+    monster.animationSpeed = 0.2;
+    monster.loop = true;
+    monster.anchor.set(0.5);
+    monster.position.set(200, 400);
+
+
+    world.addChild(monster);
+    world.addChild(box);
+    world.x = -200;
+    world.y = -800;
+
+
+
     //This is where the game is displayed
     let gameContainer = new PIXI.Container();
     gameContainer.addChild(world);
-    gameContainer.addChild(hero);
     gameContainer.interactive = true;
     gameContainer.name = "gameContainer";
 
     //We remove old displays and add the game display
     app.stage.removeChildren();
     app.stage.addChild(gameContainer);
+    app.stage.addChild(hero);
 
     //We handle game inputs
     window.addEventListener("keydown", regsiterKeyboardInputs);
     window.addEventListener("keyup", unRegsiterKeyboardInputs);
 
     // Wre create the game loop
-    app.ticker.add((delta, map) => gameLoop(delta, displayedWorld, hero, heroSheet, frame, worldTexture, worldBoxes));
+    app.ticker.add((delta, map) => gameLoop(hero, heroSheet, world, worldTexture, worldBoxes, gameContainer));
 
 
 }
 
 
 //needs the player and the camera
-function moveTop(frame, hero) {
-    console.log(frame, hero);
+function moveTop(world, hero) {
     hero.willMove = true;
     //camera move
-    if (frame.y > 3 && hero.y === gameScreen.height / 2) {
-        frame.futureY = frame.y - HERO_SPEED;
+    if (world.y < 0 && hero.y === gameScreen.height / 2) {
+        world.futureY = world.y + HERO_SPEED;
     } else {
         //player move
         if (hero.y - hero.height / 2 > 0) {
@@ -171,11 +185,10 @@ function moveTop(frame, hero) {
 }
 
 
-function moveLeft(frame, hero, worldTexture) {
+function moveLeft(world, hero) {
     hero.willMove = true;
-
-    if (frame.x >= 3 && hero.x === gameScreen.width / 2) {
-        frame.futureX = frame.x - HERO_SPEED;
+    if (world.x < 0 && hero.x === gameScreen.width / 2) {
+        world.futureX = world.x + HERO_SPEED;
         //player
     } else {
         if (hero.x - hero.width / 2 > 0) {
@@ -186,15 +199,15 @@ function moveLeft(frame, hero, worldTexture) {
 
 
 //Needs the player, the worldMap and the camera
-function moveBottom(frame, hero, worldTexture) {
+function moveBottom(world, hero) {
     hero.willMove = true;
     //camera move
     // if camera bottom hasn't reached the end of the world and the playered is not centered
     //TODO a method of the class game that checks if a sprite is centered in the game screen
     //TODO: a method of the class game that checks if a point is still in the screen
     //TODO: a method of the class camera that returns the bottom y coordinate of the sprite  
-    if (frame.y + frame.height < worldTexture.height && hero.y === gameScreen.height / 2) {
-        frame.futureY = frame.y + HERO_SPEED;
+    if (Math.abs(world.y) < world.height - gameScreen.height && hero.y === gameScreen.height / 2) {
+        world.futureY = world.y - HERO_SPEED;
         //player
     } else {
         //While player is in the screen
@@ -206,12 +219,13 @@ function moveBottom(frame, hero, worldTexture) {
     }
 }
 
-function moveRight(frame, hero, worldTexture) {
+function moveRight(world, hero) {
 
     hero.willMove = true;
 
-    if (frame.x + frame.width < worldTexture.width && hero.x === gameScreen.width / 2) {
-        frame.futureX = frame.x + HERO_SPEED;
+    //Camera offset X must be less than the MAX offset which is the size of the world minus the gameScreen
+    if (Math.abs(world.x) < world.width - gameScreen.width && hero.x === gameScreen.width / 2) {
+        world.futureX = world.x - HERO_SPEED;
         //player
     } else {
 
@@ -226,10 +240,10 @@ function updateHeroPosition(hero, heroSheet) {
     hero.y = hero.futureY;
 }
 
-function updateCameraPosition(frame) {
+function updateWorldPosition(world) {
 
-    frame.x = frame.futureX;
-    frame.y = frame.futureY;
+    world.x = world.futureX;
+    world.y = world.futureY;
 }
 
 function updateHeroView(hero, heroSheet) {
@@ -283,52 +297,52 @@ function handleKeyboardInputs(hero, heroSheet, frame, worldTexture) {
 function handleKeyboardRelease(hero, heroSheet) {
     if (["z", "q", "s", "d"].includes(inputReleaseQueue.pop())) {
         idle(hero, heroSheet);
-        hero.willMove =false;
+        hero.willMove = false;
     }
 }
 
 
-function handleCollisions(hero, heroWorldPositionX, heroWorldPositionY, worldBoxes) {
-    return heroWorldPositionX >= worldBoxes[0].x
-        && heroWorldPositionX <= worldBoxes[0].x + worldBoxes[0].width
-        && heroWorldPositionY >= worldBoxes[0].y
-        && heroWorldPositionY <= worldBoxes[0].y + worldBoxes[0].height;
+function handleCollisions(hero, worldBoxes) {
+    return Math.abs(hero.futureWorldPosition.x) >= worldBoxes[0].x
+        && Math.abs(hero.futureWorldPosition.x) <= worldBoxes[0].x + worldBoxes[0].width
+        && Math.abs(hero.futureWorldPosition.y) >= worldBoxes[0].y
+        && Math.abs(hero.futureWorldPosition.y) <= worldBoxes[0].y + worldBoxes[0].height;
 
 
 }
 
-function gameLoop(delta, map, hero, heroSheet, frame, worldTexture, worldBoxes) {
+
+function computeFutureWorldPositions(world, hero){
+
+    let deltaX = world.futureX - world.x +  hero.futureX - hero.x;
+    let deltaY = world.futureY - world.y +  hero.futureY - hero.y;
+
+    hero.futureWorldPosition = new PIXI.Point(hero.worldPosition.x +deltaX, hero.worldPosition.y + deltaY);
+}
+
+function gameLoop(hero, heroSheet, world, worldTexture, worldBoxes, gameContainer) {
 
     //INPUT
 
-    frame.futureX = frame.x;
-    frame.futureY = frame.y;
+    world.futureX = world.x;
+    world.futureY = world.y;
 
     hero.futureX = hero.x;
     hero.futureY = hero.y;
 
-    //To replace by a state
-    //hero.willMove = false;
+    hero.worldPosition = hero.toLocal(world);
 
-    handleKeyboardInputs(hero, heroSheet, frame, worldTexture);
+    //To replace by a state
+
+    handleKeyboardInputs(hero, heroSheet, world, worldTexture);
 
     //PREDICTIONS
     //We are making predictions about the FUTURE of the game
-    let cameraCentreX = frame.futureX + frame.width / 2;
-    let cameraCentreY = frame.futureY + frame.height / 2;
-    //console.log(`Coordinates of the camera in the world (centre coordinates) : ${cameraCentreX} , ${cameraCentreY}`);
-    //console.log(`Hero coordinates in the camera frame : ${hero.x}, ${hero.y}`);
-    // We need deltaX and deltaY diff between the hero position and the middle of the screen
-    let heroDeltaX = gameScreen.width / 2 - hero.futureX;
-    let heroDeltaY = gameScreen.height / 2 - hero.futureY;
-    //console.log(`DeltaY, DeltaY : ${heroDeltaX} ${heroDeltaY}`);
 
-    let heroWorldPositionX = cameraCentreX - heroDeltaX;
-    let heroWorldPositionY = cameraCentreY - heroDeltaY;
+    computeFutureWorldPositions(world, hero);
 
-    //console.log(`wold size: width : ${worldTexture.width} , height :  ${worldTexture.height}` );
-
-    let willCollide = handleCollisions(hero, heroWorldPositionX, heroWorldPositionY, worldBoxes);
+    //TODO: a method of the Game class that returns a list of manifolds 
+    let willCollide = handleCollisions(hero, worldBoxes);
 
     //APLLYING CHANGES
     updateHeroView(hero, heroSheet);
@@ -336,12 +350,9 @@ function gameLoop(delta, map, hero, heroSheet, frame, worldTexture, worldBoxes) 
     //We are appliying 
     if (!willCollide) {
         updateHeroPosition(hero, heroSheet);
-        updateCameraPosition(frame);
+        updateWorldPosition(world);
     }
 
     handleKeyboardRelease(hero, heroSheet);
-    map.updateUvs();
-
-
 
 }
