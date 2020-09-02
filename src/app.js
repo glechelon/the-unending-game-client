@@ -111,6 +111,7 @@ function play() {
     worldBoxes.push({ x: 330, y: 840, width: 150, height: 150 });
 
     var box = new PIXI.Graphics();
+    box.beginFill(0xFFFF00);
     box.drawRect(330, 840, 150, 150);
     box.lineStyle(5, 0x000000);
 
@@ -303,10 +304,10 @@ function handleKeyboardRelease(hero, heroSheet) {
 
 
 function handleCollisions(hero, worldBoxes) {
-    return Math.abs(hero.futureWorldPosition.x) >= worldBoxes[0].x
-        && Math.abs(hero.futureWorldPosition.x) <= worldBoxes[0].x + worldBoxes[0].width
-        && Math.abs(hero.futureWorldPosition.y) >= worldBoxes[0].y
-        && Math.abs(hero.futureWorldPosition.y) <= worldBoxes[0].y + worldBoxes[0].height;
+    return hero.futureWorldPosition.x >= worldBoxes[0].x
+        && hero.futureWorldPosition.x <= worldBoxes[0].x + worldBoxes[0].width
+        && hero.futureWorldPosition.y >= worldBoxes[0].y
+        && hero.futureWorldPosition.y <= worldBoxes[0].y + worldBoxes[0].height;
 
 
 }
@@ -314,10 +315,10 @@ function handleCollisions(hero, worldBoxes) {
 
 function computeFutureWorldPositions(world, hero){
 
-    let deltaX = world.futureX - world.x +  hero.futureX - hero.x;
-    let deltaY = world.futureY - world.y +  hero.futureY - hero.y;
+    let deltaX = (world.futureX - world.x) * -1 +  hero.futureX - hero.x;
+    let deltaY = (world.futureY - world.y) * -1 +  hero.futureY - hero.y;
 
-    hero.futureWorldPosition = new PIXI.Point(hero.worldPosition.x +deltaX, hero.worldPosition.y + deltaY);
+    hero.futureWorldPosition = new PIXI.Point(hero.worldPosition.x + deltaX, hero.worldPosition.y + deltaY);
 }
 
 function gameLoop(hero, heroSheet, world, worldTexture, worldBoxes, gameContainer) {
@@ -330,7 +331,7 @@ function gameLoop(hero, heroSheet, world, worldTexture, worldBoxes, gameContaine
     hero.futureX = hero.x;
     hero.futureY = hero.y;
 
-    hero.worldPosition = hero.toLocal(world);
+    hero.worldPosition = new PIXI.Point(Math.abs(hero.toLocal(world).x), Math.abs(hero.toLocal(world).y));
 
     //To replace by a state
 
